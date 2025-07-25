@@ -23,9 +23,84 @@ function run(argv) {
         return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     }
 
-    // Utility function to truncate text for subtitle
-    function truncateText(text, maxLength = 100) {
-        return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+    // Utility function to get context around the 2FA code
+    function getCodeContext(text, code) {
+        if (!text || !code) return '';
+        
+        // Find the position of the code in the text
+        const codeIndex = text.indexOf(code);
+        if (codeIndex === -1) return code;
+        
+        // Split text into words
+        const words = text.split(/\s+/);
+        
+        // Find which word contains the code
+        let codeWordIndex = -1;
+        let currentPos = 0;
+        
+        for (let i = 0; i < words.length; i++) {
+            const wordStart = currentPos;
+            const wordEnd = currentPos + words[i].length;
+            
+            if (codeIndex >= wordStart && codeIndex < wordEnd) {
+                codeWordIndex = i;
+                break;
+            }
+            
+            currentPos = wordEnd + 1; // +1 for space
+        }
+        
+        if (codeWordIndex === -1) return code;
+        
+        // Extract context words (max 10 words total, max 80 chars)
+        const maxWords = 10;
+        const maxChars = 80;
+        
+        // Calculate how many words to take before and after
+        let beforeWords = Math.floor((maxWords - 1) / 2);
+        let afterWords = Math.floor((maxWords - 1) / 2);
+        
+        // Adjust if we're near the beginning or end
+        const availableBefore = codeWordIndex;
+        const availableAfter = words.length - codeWordIndex - 1;
+        
+        if (availableBefore < beforeWords) {
+            afterWords += beforeWords - availableBefore;
+            beforeWords = availableBefore;
+        }
+        
+        if (availableAfter < afterWords) {
+            beforeWords += afterWords - availableAfter;
+            afterWords = availableAfter;
+        }
+        
+        // Extract the context words
+        const startIndex = Math.max(0, codeWordIndex - beforeWords);
+        const endIndex = Math.min(words.length, codeWordIndex + afterWords + 1);
+        
+        let contextWords = words.slice(startIndex, endIndex);
+        let contextText = contextWords.join(' ');
+        
+        // Truncate if too long
+        if (contextText.length > maxChars) {
+            contextText = contextText.substring(0, maxChars - 1);
+            // Find last complete word
+            const lastSpace = contextText.lastIndexOf(' ');
+            if (lastSpace > 0) {
+                contextText = contextText.substring(0, lastSpace);
+            }
+        }
+        
+        // Add ellipsis if text was cut
+        let result = contextText;
+        if (startIndex > 0) {
+            result = '…' + result;
+        }
+        if (endIndex < words.length || contextText.length < contextWords.join(' ').length) {
+            result = result + '…';
+        }
+        
+        return result;
     }
 
     // Extract 2FA code from message content (ported from Messages workflow)
@@ -85,15 +160,11 @@ function run(argv) {
                     const cleanText = stripHtmlTags(htmlContent);
                     items.push({
                         title: `${subject}, Code: ${captchaCode}`,
-                        subtitle: truncateText(cleanText),
+                        subtitle: getCodeContext(cleanText, captchaCode),
                         arg: captchaCode,
                         uid: messageId,
                         variables: {
                             messageId: messageId.toString()
-                        },
-                        text: {
-                            copy: captchaCode,
-                            largetype: cleanText
                         }
                     });
                 }
