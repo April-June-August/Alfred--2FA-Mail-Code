@@ -44,10 +44,12 @@ function deleteMailById(messageIdToDelete) {
         }
 
         // Message not found in either mailbox
+        console.log(`Message with ID ${messageIdToDelete} not found in either mailbox`);
         return false;
 
     } catch (error) {
         // Handle any Mail app access errors or other issues
+        console.log(`Error accessing Mail app or deleting message: ${error.message}`);
         return false;
     }
 }

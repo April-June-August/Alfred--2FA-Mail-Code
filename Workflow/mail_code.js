@@ -164,6 +164,8 @@ function processMessages(messages, maxCount = 5) {
             }
         } catch (error) {
             // Skip messages that can't be processed
+            const subject = message.subject() || 'No Subject';
+            console.log(`Skipping message - Subject: ${subject}, Error: ${error.message}`);
             continue;
         }
     }
@@ -184,6 +186,9 @@ function getMail2FACodes() {
     // Retrieve messages from each mailbox (if available)
     const junkMessages = junkMailbox ? junkMailbox.messages() : [];
     const inboxMessages = inboxMailbox ? inboxMailbox.messages() : [];
+    
+    console.log(`Reading ${inboxMessages.length} messages from inbox`);
+    console.log(`Reading ${junkMessages.length} messages from junk mailbox`);
 
     // Process messages and extract 2FA codes
     let items = [];
