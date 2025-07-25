@@ -131,7 +131,19 @@ function extractCaptchaFromContent(content) {
 function processMessages(messages, maxCount = 5) {
     const items = [];
     const processedMessages = new Set(); // To avoid duplicates
-    const messagesToProcess = messages.slice(0, maxCount);
+    
+    // Sort messages by dateReceived (newest first) before slicing
+    const sortedMessages = messages.sort((a, b) => {
+        try {
+            const dateA = a.dateReceived();
+            const dateB = b.dateReceived();
+            return dateB - dateA; // Newest first
+        } catch (error) {
+            return 0; // Keep original order if can't get dates
+        }
+    });
+    
+    const messagesToProcess = sortedMessages.slice(0, maxCount);
     
     for (const message of messagesToProcess) {
         try {
@@ -196,8 +208,6 @@ function getMail2FACodes() {
     items = items.concat(processMessages(inboxMessages, 5));
     items = items.concat(processMessages(junkMessages, 5));
 
-    // Sort items by title (most recent subjects tend to be processed first)
-    items.sort((a, b) => a.title.localeCompare(b.title));
 
     // If no codes found, add a fallback item
     if (items.length === 0) {
