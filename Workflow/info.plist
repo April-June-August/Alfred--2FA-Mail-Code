@@ -47,23 +47,37 @@
 				<false/>
 			</dict>
 		</array>
-		<key>C0AE6BD8-4070-4AC7-9B02-10F09F945681</key>
+		<key>B1CCA9A0-99EC-46DB-BF61-E17A96EE7B1F</key>
 		<array>
 			<dict>
 				<key>destinationuid</key>
-				<string>304D4C82-320C-45EC-8995-250A3996595F</string>
+				<string>7E18EA93-A903-43E8-9CCA-1325C78C06C1</string>
 				<key>modifiers</key>
 				<integer>0</integer>
 				<key>modifiersubtext</key>
 				<string></string>
-				<key>sourceoutputuid</key>
-				<string>4FBAA9EE-FEEA-4AE3-8181-5821FD91E74F</string>
 				<key>vitoclose</key>
 				<false/>
 			</dict>
+		</array>
+		<key>C0AE6BD8-4070-4AC7-9B02-10F09F945681</key>
+		<array>
 			<dict>
 				<key>destinationuid</key>
-				<string>8F719A36-467A-4D2F-94C6-54CF7C884057</string>
+				<string>CD250C70-F3E6-436F-A6F2-875DF81420A0</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>CD250C70-F3E6-436F-A6F2-875DF81420A0</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>34048ED5-DBA8-41F9-A311-7141456C517E</string>
 				<key>modifiers</key>
 				<integer>0</integer>
 				<key>modifiersubtext</key>
@@ -109,27 +123,6 @@
 		<dict>
 			<key>config</key>
 			<dict>
-				<key>lastpathcomponent</key>
-				<false/>
-				<key>onlyshowifquerypopulated</key>
-				<false/>
-				<key>removeextension</key>
-				<false/>
-				<key>text</key>
-				<string></string>
-				<key>title</key>
-				<string>Email extracted and deleted.</string>
-			</dict>
-			<key>type</key>
-			<string>alfred.workflow.output.notification</string>
-			<key>uid</key>
-			<string>304D4C82-320C-45EC-8995-250A3996595F</string>
-			<key>version</key>
-			<integer>1</integer>
-		</dict>
-		<dict>
-			<key>config</key>
-			<dict>
 				<key>concurrently</key>
 				<false/>
 				<key>escaping</key>
@@ -147,6 +140,29 @@
 			<string>alfred.workflow.action.script</string>
 			<key>uid</key>
 			<string>2305F841-1106-4B1D-BAC8-5C392F915A03</string>
+			<key>version</key>
+			<integer>2</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>concurrently</key>
+				<false/>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>script</key>
+				<string>./notificator --title "2FA Mail Codes" --message "❌️ Failed to delete email" --sound 'Basso'</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>type</key>
+				<integer>11</integer>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.action.script</string>
+			<key>uid</key>
+			<string>34048ED5-DBA8-41F9-A311-7141456C517E</string>
 			<key>version</key>
 			<integer>2</integer>
 		</dict>
@@ -234,6 +250,19 @@
 		<dict>
 			<key>config</key>
 			<dict>
+				<key>seconds</key>
+				<string>3</string>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.utility.delay</string>
+			<key>uid</key>
+			<string>CD250C70-F3E6-436F-A6F2-875DF81420A0</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
 				<key>alfredfiltersresults</key>
 				<true/>
 				<key>alfredfiltersresultsmatchmode</key>
@@ -304,23 +333,25 @@
 		<dict>
 			<key>config</key>
 			<dict>
-				<key>lastpathcomponent</key>
+				<key>concurrently</key>
 				<false/>
-				<key>onlyshowifquerypopulated</key>
-				<false/>
-				<key>removeextension</key>
-				<false/>
-				<key>text</key>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>script</key>
+				<string>./notificator --title "2FA Mail Codes" --message "✅ Code $1 Extracted" --sound 'Funk'</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
 				<string></string>
-				<key>title</key>
-				<string>failed</string>
+				<key>type</key>
+				<integer>11</integer>
 			</dict>
 			<key>type</key>
-			<string>alfred.workflow.output.notification</string>
+			<string>alfred.workflow.action.script</string>
 			<key>uid</key>
-			<string>8F719A36-467A-4D2F-94C6-54CF7C884057</string>
+			<string>7E18EA93-A903-43E8-9CCA-1325C78C06C1</string>
 			<key>version</key>
-			<integer>1</integer>
+			<integer>2</integer>
 		</dict>
 	</array>
 	<key>readme</key>
@@ -336,31 +367,38 @@
 			<key>ypos</key>
 			<real>20</real>
 		</dict>
-		<key>304D4C82-320C-45EC-8995-250A3996595F</key>
+		<key>34048ED5-DBA8-41F9-A311-7141456C517E</key>
 		<dict>
+			<key>colorindex</key>
+			<integer>3</integer>
+			<key>note</key>
+			<string>Notificator to post notifications
+https://github.com/vitorgalvao/notificator</string>
 			<key>xpos</key>
-			<real>1080</real>
+			<real>1130</real>
 			<key>ypos</key>
-			<real>15</real>
+			<real>35</real>
 		</dict>
 		<key>54FC2D9C-1219-42FD-9206-D2C15314831C</key>
 		<dict>
 			<key>xpos</key>
-			<real>600</real>
+			<real>620</real>
 			<key>ypos</key>
 			<real>50</real>
 		</dict>
-		<key>8F719A36-467A-4D2F-94C6-54CF7C884057</key>
+		<key>7E18EA93-A903-43E8-9CCA-1325C78C06C1</key>
 		<dict>
+			<key>colorindex</key>
+			<integer>3</integer>
 			<key>xpos</key>
-			<real>1090</real>
+			<real>725</real>
 			<key>ypos</key>
-			<real>205</real>
+			<real>185</real>
 		</dict>
 		<key>985E4534-ACCE-408E-9DD5-27BE4048784D</key>
 		<dict>
 			<key>xpos</key>
-			<real>460</real>
+			<real>465</real>
 			<key>ypos</key>
 			<real>55</real>
 		</dict>
@@ -379,6 +417,13 @@
 			<real>895</real>
 			<key>ypos</key>
 			<real>40</real>
+		</dict>
+		<key>CD250C70-F3E6-436F-A6F2-875DF81420A0</key>
+		<dict>
+			<key>xpos</key>
+			<real>1025</real>
+			<key>ypos</key>
+			<real>65</real>
 		</dict>
 		<key>E2C0AD88-4AC9-432C-9E8C-3729F7CFCCA1</key>
 		<dict>
