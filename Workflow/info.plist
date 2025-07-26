@@ -278,7 +278,7 @@
 				<key>escaping</key>
 				<integer>68</integer>
 				<key>keyword</key>
-				<string>mailcode</string>
+				<string>{var:main_keyword}</string>
 				<key>queuedelaycustom</key>
 				<integer>3</integer>
 				<key>queuedelayimmediatelyinitially</key>
@@ -449,6 +449,27 @@ https://github.com/vitorgalvao/notificator</string>
 	</dict>
 	<key>userconfigurationconfig</key>
 	<array>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string>mailcode</string>
+				<key>placeholder</key>
+				<string></string>
+				<key>required</key>
+				<false/>
+				<key>trim</key>
+				<true/>
+			</dict>
+			<key>description</key>
+			<string></string>
+			<key>label</key>
+			<string>Main Keyword</string>
+			<key>type</key>
+			<string>textfield</string>
+			<key>variable</key>
+			<string>main_keyword</string>
+		</dict>
 		<dict>
 			<key>config</key>
 			<dict>
