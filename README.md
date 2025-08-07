@@ -9,3 +9,7 @@ Extract verification codes from Mail.app via the keyword `mailcode`.
 ![Extract verification code via keyword](Workflow/images/showcase_1.png)
 
 * <kbd>↩</kbd> Copy code and paste to frontmost app.
+
+## License
+
+This project is licensed under the [GPL-3.0 license](./LICENSE).
