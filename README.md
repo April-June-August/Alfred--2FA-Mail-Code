@@ -4,11 +4,10 @@ Extract 2FA codes from Apple’s Mail.app with [Alfred](https://www.alfredapp.co
 
 ## Installation
 
-1. [➡️ Download the latest release](../../releases/latest)
+1. [↓ Download the latest release](../../releases/latest)
 
-2. Double click the `.alfredworkflow` file to install
+2. Double-click the `.alfredworkflow` file to install
 
-Note that the [Alfred Powerpack](https://www.alfredapp.com/powerpack/) is required to use workflows.
 
 ## Usage
 
