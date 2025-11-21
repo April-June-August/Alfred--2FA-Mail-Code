@@ -99,41 +99,131 @@ function isValidCode(code) {
 function extractCaptchaFromContent(content) {
     // Remove HTML tags first
     const cleanedContent = stripHtmlTags(content);
-    
+
     // Remove date strings in various formats
     const cleanedMsg = cleanedContent.replace(
         /\d{4}[./-]\d{1,2}[./-]\d{1,2}|\d{1,2}[./-]\d{1,2}[./-]\d{2,4}/g,
         ''
     );
 
-    // Match numbers with 6 to 8 digits, not part of currency amounts
-    const regex = /\b(?<![.,]\d|€|\$|£)(\d{6,8})(?!\d|[.,]\d|€|\$|£)\b/g;
-
-    // Collect all matches
+    // Collect all matches from different patterns
     const matches = [];
+
+    // Pattern 1: Numeric codes (6 to 8 digits)
+    const numericRegex = /\b(?<![.,]\d|€|\$|£)(\d{6,8})(?!\d|[.,]\d|€|\$|£)\b/g;
     let match;
-    while ((match = regex.exec(cleanedMsg)) !== null) {
+    while ((match = numericRegex.exec(cleanedMsg)) !== null) {
         const code = match[0];
-        // Only include codes that pass validation
         if (isValidCode(code)) {
-            matches.push(code);
+            matches.push({ code: code, type: 'numeric', length: code.length });
         }
     }
 
-    // Sort by length in descending order (longer codes first)
-    matches.sort((a, b) => b.length - a.length);
+    // Pattern 2: Alphanumeric codes (6 to 8 characters, must contain both letters and numbers)
+    const alphanumericRegex = /\b(?=.*[A-Z])(?=.*\d)[A-Z0-9]{6,8}\b/gi;
+    while ((match = alphanumericRegex.exec(cleanedMsg)) !== null) {
+        const code = match[0].toUpperCase();
+        // Ensure it has both letters and numbers (no pure letter codes)
+        if (/[A-Z]/.test(code) && /\d/.test(code)) {
+            matches.push({ code: code, type: 'alphanumeric', length: code.length });
+        }
+    }
 
-    // Return the first (longest) match, or null if no matches found
-    return matches.length > 0 ? matches[0] : null;
+    // Pattern 3: Dash-separated codes (e.g., H8Z-EDJ, VQC-TO3, AB12-CD34)
+    const dashSeparatedRegex = /\b[A-Z0-9]{2,4}-[A-Z0-9]{2,4}\b/gi;
+    while ((match = dashSeparatedRegex.exec(cleanedMsg)) !== null) {
+        const code = match[0].toUpperCase();
+        // Ensure it has both letters and numbers across the whole code
+        if (/[A-Z]/.test(code) && /\d/.test(code)) {
+            // Filter out obvious marketing codes (like "14-DAY", "30-OFF")
+            // Check both the original code and without dash
+            const removeDash = code.replace(/-/g, '');
+            const isMarketingPattern = /^(\d{1,3})[-]?(DAY|OFF|DEAL|SAVE|GET)$/i.test(code) ||
+                                      /^(SAVE|GET|BUY)[-]?(\d{1,3})$/i.test(code) ||
+                                      /^(\d{1,3})(DAY|OFF|DEAL|SAVE|GET)$/i.test(removeDash);
+
+            if (!isMarketingPattern) {
+                // Calculate length without the dash for comparison
+                const lengthWithoutDash = removeDash.length;
+                matches.push({ code: code, type: 'dash-separated', length: lengthWithoutDash });
+            }
+        }
+    }
+
+    // Sort by type preference (numeric first) then by length (longer first)
+    matches.sort((a, b) => {
+        if (a.type !== b.type) {
+            return a.type === 'numeric' ? -1 : 1; // Prefer numeric
+        }
+        return b.length - a.length; // Longer codes first
+    });
+
+    // Return the first (best) match, or null if no matches found
+    return matches.length > 0 ? matches[0].code : null;
+}
+
+// Helper function to filter messages by date (only recent ones)
+function filterRecentMessages(messages, minutesBack = 15) {
+    const cutoffDate = new Date();
+    cutoffDate.setMinutes(cutoffDate.getMinutes() - minutesBack);
+
+    const recentMessages = [];
+
+    // Only process enough messages to find recent ones (limit to first 100 to avoid full scan)
+    const maxToCheck = Math.min(messages.length, 100);
+
+    for (let i = 0; i < maxToCheck; i++) {
+        try {
+            const message = messages[i];
+            const dateReceived = message.dateReceived();
+
+            if (dateReceived >= cutoffDate) {
+                recentMessages.push(message);
+            }
+        } catch (error) {
+            // Skip messages with errors
+            continue;
+        }
+    }
+
+    return recentMessages;
+}
+
+// Helper function to group messages by sender/account
+function groupMessagesBySender(messages) {
+    const groups = new Map();
+
+    for (const message of messages) {
+        try {
+            const sender = message.sender() || 'Unknown';
+
+            if (!groups.has(sender)) {
+                groups.set(sender, []);
+            }
+            groups.get(sender).push(message);
+        } catch (error) {
+            continue;
+        }
+    }
+
+    return groups;
 }
 
 // Helper function to process messages from a mailbox
-function processMessages(messages, maxCount = 5) {
+function processMessages(messages, maxCount = 5, maxPerAccount = 2) {
     const items = [];
     const processedMessages = new Set(); // To avoid duplicates
-    
-    // Sort messages by dateReceived (newest first) before slicing
-    const sortedMessages = messages.sort((a, b) => {
+
+    // First, filter to only recent messages (last 15 minutes)
+    const recentMessages = filterRecentMessages(messages, 15);
+
+    console.log(`Filtered to ${recentMessages.length} recent messages (last 15 min)`);
+
+    // Group by sender to ensure we get variety
+    const messageGroups = groupMessagesBySender(recentMessages);
+
+    // Sort messages by dateReceived (newest first)
+    const sortedMessages = recentMessages.sort((a, b) => {
         try {
             const dateA = a.dateReceived();
             const dateB = b.dateReceived();
@@ -142,26 +232,41 @@ function processMessages(messages, maxCount = 5) {
             return 0; // Keep original order if can't get dates
         }
     });
-    
-    const messagesToProcess = sortedMessages.slice(0, maxCount);
-    
-    for (const message of messagesToProcess) {
+
+    // Track codes per account to ensure diversity
+    const codesPerAccount = new Map();
+
+    for (const message of sortedMessages) {
+        // Stop if we have enough total items
+        if (items.length >= maxCount) {
+            break;
+        }
+
         try {
             const messageId = message.id();
-            
+
             // Skip if already processed
             if (processedMessages.has(messageId)) {
                 continue;
             }
+
+            const sender = message.sender() || 'Unknown';
+
+            // Check if we've hit the per-account limit
+            const accountCount = codesPerAccount.get(sender) || 0;
+            if (accountCount >= maxPerAccount) {
+                continue; // Skip to maintain diversity
+            }
+
             processedMessages.add(messageId);
 
             const subject = message.subject() || 'No Subject';
             const content = message.content();
             const htmlContent = content ? content.toString() : '';
-            
+
             // Extract 2FA code
             const captchaCode = extractCaptchaFromContent(htmlContent);
-            
+
             if (captchaCode) {
                 const cleanText = stripHtmlTags(htmlContent);
                 items.push({
@@ -172,15 +277,22 @@ function processMessages(messages, maxCount = 5) {
                         messageId: messageId.toString()
                     }
                 });
+
+                // Increment count for this account
+                codesPerAccount.set(sender, accountCount + 1);
             }
         } catch (error) {
             // Skip messages that can't be processed
-            const subject = message.subject() || 'No Subject';
-            console.log(`Skipping message - Subject: ${subject}, Error: ${error.message}`);
+            try {
+                const subject = message.subject() || 'No Subject';
+                console.log(`Skipping message - Subject: ${subject}, Error: ${error.message}`);
+            } catch (e) {
+                console.log(`Skipping message - Error: ${error.message}`);
+            }
             continue;
         }
     }
-    
+
     return items;
 }
 
@@ -190,23 +302,33 @@ function getMail2FACodes() {
     const Mail = Application('Mail');
     Mail.includeStandardAdditions = true;
 
+    const startTime = Date.now();
+
     // Get the mailboxes
     const junkMailbox = Mail.junkMailbox;
     const inboxMailbox = Mail.inbox;
-    
+
     // Retrieve messages from each mailbox (if available)
     const junkMessages = junkMailbox ? junkMailbox.messages() : [];
     const inboxMessages = inboxMailbox ? inboxMailbox.messages() : [];
-    
-    console.log(`Reading ${inboxMessages.length} messages from inbox`);
-    console.log(`Reading ${junkMessages.length} messages from junk mailbox`);
+
+    console.log(`Total messages: ${inboxMessages.length} inbox, ${junkMessages.length} junk`);
 
     // Process messages and extract 2FA codes
+    // Use maxCount=5 total, maxPerAccount=2 to ensure diversity
     let items = [];
 
-    // Process messages from both mailboxes
-    items = items.concat(processMessages(inboxMessages, 5));
-    items = items.concat(processMessages(junkMessages, 5));
+    // Process inbox first (more likely to have valid 2FA codes)
+    items = items.concat(processMessages(inboxMessages, 5, 2));
+
+    // If we still have room, check junk (but only if inbox didn't fill us up)
+    if (items.length < 5) {
+        const remaining = 5 - items.length;
+        items = items.concat(processMessages(junkMessages, remaining, 2));
+    }
+
+    const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(2);
+    console.log(`Processing completed in ${elapsedTime}s, found ${items.length} codes`);
 
     let result = { items: items };
 
@@ -216,7 +338,7 @@ function getMail2FACodes() {
             rerun: 2.0,
             items: [{
                 title: "No 2FA codes found",
-                subtitle: "No emails with valid 6+ digit codes detected",
+                subtitle: "No emails with valid codes detected in last 15 minutes",
                 arg: "",
                 valid: false,
                 icon: {
