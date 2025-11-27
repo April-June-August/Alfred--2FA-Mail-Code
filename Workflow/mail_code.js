@@ -163,14 +163,15 @@ function extractCaptchaFromContent(content) {
 }
 
 // Helper function to filter messages by date (only recent ones)
-function filterRecentMessages(messages, minutesBack = 15) {
+// Now also stores account/mailbox info for each message
+function filterRecentMessages(messages, minutesBack = 15, accountName = '', mailboxName = '') {
     const cutoffDate = new Date();
     cutoffDate.setMinutes(cutoffDate.getMinutes() - minutesBack);
 
     const recentMessages = [];
 
-    // Only process enough messages to find recent ones (limit to first 100 to avoid full scan)
-    const maxToCheck = Math.min(messages.length, 100);
+    // Check first 50 messages per inbox (since we now check multiple inboxes)
+    const maxToCheck = Math.min(messages.length, 50);
 
     for (let i = 0; i < maxToCheck; i++) {
         try {
@@ -178,6 +179,9 @@ function filterRecentMessages(messages, minutesBack = 15) {
             const dateReceived = message.dateReceived();
 
             if (dateReceived >= cutoffDate) {
+                // Attach account/mailbox info to message for later use
+                message._accountName = accountName;
+                message._mailboxName = mailboxName;
                 recentMessages.push(message);
             }
         } catch (error) {
@@ -210,14 +214,17 @@ function groupMessagesBySender(messages) {
 }
 
 // Helper function to process messages from a mailbox
-function processMessages(messages, maxCount = 5, maxPerAccount = 2) {
+// accountName and mailboxName are passed through for tracking
+function processMessages(messages, maxCount = 5, maxPerAccount = 2, accountName = '', mailboxName = '') {
     const items = [];
     const processedMessages = new Set(); // To avoid duplicates
 
     // First, filter to only recent messages (last 15 minutes)
-    const recentMessages = filterRecentMessages(messages, 15);
+    const recentMessages = filterRecentMessages(messages, 15, accountName, mailboxName);
 
-    console.log(`Filtered to ${recentMessages.length} recent messages (last 15 min)`);
+    if (recentMessages.length > 0) {
+        console.log(`  ${accountName || 'Mailbox'}: ${recentMessages.length} recent messages`);
+    }
 
     // Group by sender to ensure we get variety
     const messageGroups = groupMessagesBySender(recentMessages);
@@ -269,12 +276,18 @@ function processMessages(messages, maxCount = 5, maxPerAccount = 2) {
 
             if (captchaCode) {
                 const cleanText = stripHtmlTags(htmlContent);
+                // Get account/mailbox info from message (attached by filterRecentMessages)
+                const msgAccountName = message._accountName || accountName || '';
+                const msgMailboxName = message._mailboxName || mailboxName || '';
+
                 items.push({
                     title: `${subject}, Code: ${captchaCode}`,
                     subtitle: getCodeContext(cleanText, captchaCode),
                     arg: captchaCode,
                     variables: {
-                        messageId: messageId.toString()
+                        messageId: messageId.toString(),
+                        accountName: msgAccountName,
+                        mailboxName: msgMailboxName
                     }
                 });
 
@@ -304,27 +317,59 @@ function getMail2FACodes() {
 
     const startTime = Date.now();
 
-    // Get the mailboxes
-    const junkMailbox = Mail.junkMailbox;
-    const inboxMailbox = Mail.inbox;
+    // Get all accounts and check each one's inbox individually
+    // This ensures we find recent emails regardless of which account they're in
+    const accounts = Mail.accounts();
+    console.log(`Checking ${accounts.length} email accounts...`);
 
-    // Retrieve messages from each mailbox (if available)
-    const junkMessages = junkMailbox ? junkMailbox.messages() : [];
-    const inboxMessages = inboxMailbox ? inboxMailbox.messages() : [];
-
-    console.log(`Total messages: ${inboxMessages.length} inbox, ${junkMessages.length} junk`);
-
-    // Process messages and extract 2FA codes
-    // Use maxCount=5 total, maxPerAccount=2 to ensure diversity
     let items = [];
+    const maxTotalItems = 5;
+    const maxPerSender = 2;
 
-    // Process inbox first (more likely to have valid 2FA codes)
-    items = items.concat(processMessages(inboxMessages, 5, 2));
+    // Check each account's INBOX
+    for (let i = 0; i < accounts.length; i++) {
+        if (items.length >= maxTotalItems) break;
 
-    // If we still have room, check junk (but only if inbox didn't fill us up)
-    if (items.length < 5) {
-        const remaining = 5 - items.length;
-        items = items.concat(processMessages(junkMessages, remaining, 2));
+        try {
+            const account = accounts[i];
+            const accountName = account.name();
+            const mailboxes = account.mailboxes();
+
+            // Find the INBOX mailbox for this account
+            for (let j = 0; j < mailboxes.length; j++) {
+                const mailbox = mailboxes[j];
+                const mailboxName = mailbox.name();
+
+                if (mailboxName === 'INBOX' || mailboxName.toLowerCase() === 'inbox') {
+                    const messages = mailbox.messages();
+
+                    // Process this account's inbox
+                    const remaining = maxTotalItems - items.length;
+                    const accountItems = processMessages(messages, remaining, maxPerSender, accountName, mailboxName);
+                    items = items.concat(accountItems);
+
+                    break; // Found INBOX, move to next account
+                }
+            }
+        } catch (error) {
+            console.log(`Error checking account: ${error.message}`);
+            continue;
+        }
+    }
+
+    // Also check junk mail if we still have room
+    if (items.length < maxTotalItems) {
+        try {
+            const junkMailbox = Mail.junkMailbox;
+            if (junkMailbox) {
+                const junkMessages = junkMailbox.messages();
+                const remaining = maxTotalItems - items.length;
+                const junkItems = processMessages(junkMessages, remaining, maxPerSender, 'Junk', 'Junk');
+                items = items.concat(junkItems);
+            }
+        } catch (error) {
+            console.log(`Error checking junk: ${error.message}`);
+        }
     }
 
     const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(2);
