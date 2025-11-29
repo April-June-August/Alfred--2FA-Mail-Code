@@ -308,9 +308,12 @@ function processMessages(messages, maxCount = 5, maxPerAccount = 2, accountName 
                 const msgAccountName = wrapper.accountName || accountName || '';
                 const msgMailboxName = wrapper.mailboxName || mailboxName || '';
 
+                // Format account name for display (show just the email, not full name)
+                const accountDisplay = msgAccountName ? ` [${msgAccountName}]` : '';
+
                 items.push({
                     title: `${subject}, Code: ${captchaCode}`,
-                    subtitle: getCodeContext(cleanText, captchaCode),
+                    subtitle: `${msgAccountName} · ${getCodeContext(cleanText, captchaCode)}`,
                     arg: captchaCode,
                     variables: {
                         messageId: messageId.toString(),
