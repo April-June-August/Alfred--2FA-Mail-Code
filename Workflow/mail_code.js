@@ -1,5 +1,13 @@
 #!/usr/bin/osascript -l JavaScript
 
+// Configuration
+const DEBUG = false; // Set to true to enable verbose logging
+
+// Debug logging helper
+function log(msg) {
+    if (DEBUG) console.log(msg);
+}
+
 // Utility function to strip HTML tags
 function stripHtmlTags(html) {
     return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -173,38 +181,54 @@ function filterRecentMessages(messages, minutesBack = 15, accountName = '', mail
     // Check first 50 messages per inbox (since we now check multiple inboxes)
     const maxToCheck = Math.min(messages.length, 50);
 
+    // Debug: log first message date for this account
+    if (maxToCheck > 0 && accountName) {
+        try {
+            const firstMsg = messages[0];
+            const firstDate = firstMsg.dateReceived();
+            const isRecent = firstDate >= cutoffDate;
+            log(`  ${accountName}: first msg date ${firstDate}, recent=${isRecent}`);
+        } catch (e) {
+            log(`  ${accountName}: error reading first msg: ${e.message}`);
+        }
+    }
+
     for (let i = 0; i < maxToCheck; i++) {
         try {
             const message = messages[i];
             const dateReceived = message.dateReceived();
 
             if (dateReceived >= cutoffDate) {
-                // Attach account/mailbox info to message for later use
-                message._accountName = accountName;
-                message._mailboxName = mailboxName;
-                recentMessages.push(message);
+                // Store message with account info as a wrapper object
+                recentMessages.push({
+                    message: message,
+                    accountName: accountName,
+                    mailboxName: mailboxName
+                });
             }
         } catch (error) {
             // Skip messages with errors
+            if (accountName) log(`  ${accountName}: error at msg ${i}: ${error.message}`);
             continue;
         }
     }
 
+    if (accountName) log(`  ${accountName}: found ${recentMessages.length} recent messages`);
     return recentMessages;
 }
 
 // Helper function to group messages by sender/account
-function groupMessagesBySender(messages) {
+function groupMessagesBySender(messageWrappers) {
     const groups = new Map();
 
-    for (const message of messages) {
+    for (const wrapper of messageWrappers) {
         try {
-            const sender = message.sender() || 'Unknown';
+            const sender = wrapper.message.sender() || 'Unknown';
 
             if (!groups.has(sender)) {
                 groups.set(sender, []);
             }
-            groups.get(sender).push(message);
+            groups.get(sender).push(wrapper);
         } catch (error) {
             continue;
         }
@@ -223,7 +247,7 @@ function processMessages(messages, maxCount = 5, maxPerAccount = 2, accountName 
     const recentMessages = filterRecentMessages(messages, 15, accountName, mailboxName);
 
     if (recentMessages.length > 0) {
-        console.log(`  ${accountName || 'Mailbox'}: ${recentMessages.length} recent messages`);
+        console.log(`  ${accountName || 'Mailbox'}: ${recentMessages.length} recent messages, extracting codes...`);
     }
 
     // Group by sender to ensure we get variety
@@ -232,8 +256,8 @@ function processMessages(messages, maxCount = 5, maxPerAccount = 2, accountName 
     // Sort messages by dateReceived (newest first)
     const sortedMessages = recentMessages.sort((a, b) => {
         try {
-            const dateA = a.dateReceived();
-            const dateB = b.dateReceived();
+            const dateA = a.message.dateReceived();
+            const dateB = b.message.dateReceived();
             return dateB - dateA; // Newest first
         } catch (error) {
             return 0; // Keep original order if can't get dates
@@ -243,13 +267,14 @@ function processMessages(messages, maxCount = 5, maxPerAccount = 2, accountName 
     // Track codes per account to ensure diversity
     const codesPerAccount = new Map();
 
-    for (const message of sortedMessages) {
+    for (const wrapper of sortedMessages) {
         // Stop if we have enough total items
         if (items.length >= maxCount) {
             break;
         }
 
         try {
+            const message = wrapper.message;
             const messageId = message.id();
 
             // Skip if already processed
@@ -271,14 +296,17 @@ function processMessages(messages, maxCount = 5, maxPerAccount = 2, accountName 
             const content = message.content();
             const htmlContent = content ? content.toString() : '';
 
+            log(`    Processing: ${subject} (content: ${htmlContent.length} chars)`);
+
             // Extract 2FA code
             const captchaCode = extractCaptchaFromContent(htmlContent);
+            log(`    Extracted code: ${captchaCode || 'none'}`);
 
             if (captchaCode) {
                 const cleanText = stripHtmlTags(htmlContent);
-                // Get account/mailbox info from message (attached by filterRecentMessages)
-                const msgAccountName = message._accountName || accountName || '';
-                const msgMailboxName = message._mailboxName || mailboxName || '';
+                // Get account/mailbox info from wrapper
+                const msgAccountName = wrapper.accountName || accountName || '';
+                const msgMailboxName = wrapper.mailboxName || mailboxName || '';
 
                 items.push({
                     title: `${subject}, Code: ${captchaCode}`,
@@ -333,6 +361,7 @@ function getMail2FACodes() {
         try {
             const account = accounts[i];
             const accountName = account.name();
+            log(`Checking account: ${accountName}`);
             const mailboxes = account.mailboxes();
 
             // Find the INBOX mailbox for this account
