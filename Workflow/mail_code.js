@@ -3,14 +3,14 @@
 // Utility function to strip HTML tags
 function stripHtmlTags(html) {
     return html
-        .replace(/<[^>]*>/g, " ")
-        .replace(/\s+/g, " ")
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/\s+/g, ' ')
         .trim();
 }
 
 // Utility function to get context around the 2FA code
 function getCodeContext(text, code) {
-    if (!text || !code) return "";
+    if (!text || !code) return '';
 
     // Find the position of the code in the text
     const codeIndex = text.indexOf(code);
@@ -64,13 +64,13 @@ function getCodeContext(text, code) {
     const endIndex = Math.min(words.length, codeWordIndex + afterWords + 1);
 
     const contextWords = words.slice(startIndex, endIndex);
-    let contextText = contextWords.join(" ");
+    let contextText = contextWords.join(' ');
 
     // Truncate if too long
     if (contextText.length > maxChars) {
         contextText = contextText.substring(0, maxChars - 1);
         // Find last complete word
-        const lastSpace = contextText.lastIndexOf(" ");
+        const lastSpace = contextText.lastIndexOf(' ');
         if (lastSpace > 0) {
             contextText = contextText.substring(0, lastSpace);
         }
@@ -83,7 +83,7 @@ function getCodeContext(text, code) {
     }
     if (
         endIndex < words.length ||
-        contextText.length < contextWords.join(" ").length
+        contextText.length < contextWords.join(' ').length
     ) {
         result = `${result}…`;
     }
@@ -109,7 +109,7 @@ function extractCaptchaFromContent(content) {
     // Remove date strings in various formats
     const cleanedMsg = cleanedContent.replace(
         /\d{4}[./-]\d{1,2}[./-]\d{1,2}|\d{1,2}[./-]\d{1,2}[./-]\d{2,4}/g,
-        "",
+        '',
     );
 
     // Match numbers with 6 to 8 digits, not part of currency amounts
@@ -162,9 +162,9 @@ function processMessages(messages, maxCount = 5) {
             }
             processedMessages.add(messageId);
 
-            const subject = message.subject() || "No Subject";
+            const subject = message.subject() || 'No Subject';
             const content = message.content();
-            const htmlContent = content ? content.toString() : "";
+            const htmlContent = content ? content.toString() : '';
 
             // Extract 2FA code
             const captchaCode = extractCaptchaFromContent(htmlContent);
@@ -182,7 +182,7 @@ function processMessages(messages, maxCount = 5) {
             }
         } catch (error) {
             // Skip messages that can't be processed
-            const subject = message.subject() || "No Subject";
+            const subject = message.subject() || 'No Subject';
             console.log(
                 `Skipping message - Subject: ${subject}, Error: ${error.message}`,
             );
@@ -195,7 +195,7 @@ function processMessages(messages, maxCount = 5) {
 // Main function to get 2FA codes from mail
 function getMail2FACodes() {
     // Access the Mail application
-    const Mail = Application("Mail");
+    const Mail = Application('Mail');
     Mail.includeStandardAdditions = true;
 
     // Get the mailboxes
@@ -224,9 +224,9 @@ function getMail2FACodes() {
             rerun: 2.0,
             items: [
                 {
-                    title: "No 2FA codes found",
-                    subtitle: "No emails with valid 6+ digit codes detected",
-                    arg: "",
+                    title: 'No 2FA codes found',
+                    subtitle: 'No emails with valid 6+ digit codes detected',
+                    arg: '',
                     valid: false,
                 },
             ],
@@ -236,7 +236,7 @@ function getMail2FACodes() {
     return result;
 }
 
-function _run() {
+function run() {
     const result = getMail2FACodes();
     return JSON.stringify(result);
 }
