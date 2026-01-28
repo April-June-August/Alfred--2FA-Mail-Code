@@ -201,10 +201,11 @@ function getMail2FACodes() {
     // Get the mailboxes
     const junkMailbox = Mail.junkMailbox;
     const inboxMailbox = Mail.inbox;
-
+    
+    var cutoffDate = new Date(Date.now() -  15 * 60 * 1000); // set cutoff to 15 min
     // Retrieve messages from each mailbox (if available)
-    const junkMessages = junkMailbox ? junkMailbox.messages() : [];
-    const inboxMessages = inboxMailbox ? inboxMailbox.messages() : [];
+    const junkMessages = junkMailbox ? junkMailbox.messages.whose({dateReceived: {'>': cutoffDate}})() : [];
+    const inboxMessages = inboxMailbox ? inboxMailbox.messages.whose({dateReceived: {'>': cutoffDate}})() : [];
 
     console.log(`Reading ${inboxMessages.length} messages from inbox`);
     console.log(`Reading ${junkMessages.length} messages from junk mailbox`);
