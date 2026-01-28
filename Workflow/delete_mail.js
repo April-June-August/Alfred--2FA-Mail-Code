@@ -10,10 +10,7 @@ function findAndDeleteMessage(messages, messageIdToDelete) {
                 message.delete();
                 return true;
             }
-        } catch (error) {
-            // Skip messages that can't be processed
-            continue;
-        }
+        } catch {}
     }
     return false;
 }
@@ -28,7 +25,7 @@ function deleteMailById(messageIdToDelete) {
         // Get the mailboxes
         const junkMailbox = Mail.junkMailbox;
         const inboxMailbox = Mail.inbox;
-        
+
         // Retrieve messages from each mailbox (if available)
         const junkMessages = junkMailbox ? junkMailbox.messages() : [];
         const inboxMessages = inboxMailbox ? inboxMailbox.messages() : [];
@@ -44,12 +41,15 @@ function deleteMailById(messageIdToDelete) {
         }
 
         // Message not found in either mailbox
-        console.log(`Message with ID ${messageIdToDelete} not found in either mailbox`);
+        console.log(
+            `Message with ID ${messageIdToDelete} not found in either mailbox`,
+        );
         return false;
-
     } catch (error) {
         // Handle any Mail app access errors or other issues
-        console.log(`Error accessing Mail app or deleting message: ${error.message}`);
+        console.log(
+            `Error accessing Mail app or deleting message: ${error.message}`,
+        );
         return false;
     }
 }
@@ -59,7 +59,7 @@ function run(argv) {
     if (!argv || argv.length === 0) {
         return false;
     }
-    
-    const messageIdToDelete = parseInt(argv[0]);
+
+    const messageIdToDelete = parseInt(argv[0], 10);
     return deleteMailById(messageIdToDelete);
 }
