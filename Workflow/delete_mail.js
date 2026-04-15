@@ -6,7 +6,8 @@ function findAndDeleteMessage(messages, messageIdToDelete) {
         try {
             const messageId = message.id();
             if (messageId === messageIdToDelete) {
-                // Found the message, try to delete it
+                // Found the message; mark as read before deleting it
+                message.readStatus = true;
                 message.delete();
                 return true;
             }
